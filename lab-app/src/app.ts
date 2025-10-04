@@ -1,7 +1,7 @@
-import { Book, User } from './models';
-import { LibraryService } from './services';
-import { Validation } from './validation';
-import { Modal } from './modal';
+import { Modal } from "./modal.js";
+import { LibraryService } from "./services.js";
+import { Book, User } from "./models.js";
+
 
 class App {
     private libraryService: LibraryService;
@@ -9,65 +9,40 @@ class App {
 
     constructor() {
         this.libraryService = new LibraryService();
-        this.modal = new Modal("appModal");
-
-        this.initEventListeners();
-        this.renderBooks();
-        this.renderUsers();
+        this.modal = new Modal();
+        this.init();
     }
 
-    private initEventListeners(): void {
+    private init(): void {
+        this.renderBooks();
+        this.renderUsers();
+        this.populateYears();
+
+        // додавання книги
         const addBookForm = document.getElementById("addBookForm") as HTMLFormElement;
+        addBookForm?.addEventListener("submit", e => {
+            e.preventDefault();
+            const title = (document.getElementById("bookTitle") as HTMLInputElement).value;
+            const author = (document.getElementById("bookAuthor") as HTMLInputElement).value;
+            const year = Number((document.getElementById("bookYear") as HTMLInputElement).value);
+
+            this.libraryService.addBook({title, author, year});
+            this.modal.showMessage("✅ Книга успішно додано!");
+            this.renderBooks();
+        });
+
+        // додавання користувача
         const addUserForm = document.getElementById("addUserForm") as HTMLFormElement;
+        addUserForm?.addEventListener("submit", e => {
+            e.preventDefault();
+            const idI = document.getElementById("userId") as HTMLInputElement;
+            const name = (document.getElementById("userName") as HTMLInputElement).value;
+            const email = (document.getElementById("userEmail") as HTMLInputElement).value;
 
-        if (addBookForm) {
-            addBookForm.addEventListener("submit", (e) => {
-                e.preventDefault();
-                this.addBook();
-            });
-        }
-
-        if (addUserForm) {
-            addUserForm.addEventListener("submit", (e) => {
-                e.preventDefault();
-                this.addUser();
-            });
-        }
-    }
-
-    private addBook(): void {
-        const id = (document.getElementById("bookId") as HTMLInputElement).value;
-        const title = (document.getElementById("bookTitle") as HTMLInputElement).value;
-        const author = (document.getElementById("bookAuthor") as HTMLInputElement).value;
-        const year = (document.getElementById("bookYear") as HTMLInputElement).value;
-
-        if (!Validation.isValidId(id) || !Validation.isNotEmpty(title) ||
-            !Validation.isNotEmpty(author) || !Validation.isValidYear(year)) {
-            this.modal.showMessage("Помилка: неправильні дані книги!");
-            return;
-        }
-
-        const book = new Book(Number(id), title, author, Number(year));
-        this.libraryService.addBook(book);
-        this.renderBooks();
-        this.modal.showMessage("Книга успішно додана!");
-    }
-
-    private addUser(): void {
-        const id = (document.getElementById("userId") as HTMLInputElement).value;
-        const name = (document.getElementById("userName") as HTMLInputElement).value;
-        const email = (document.getElementById("userEmail") as HTMLInputElement).value;
-
-        if (!Validation.isValidId(id) || !Validation.isNotEmpty(name) ||
-            !Validation.isValidEmail(email)) {
-            this.modal.showMessage("Помилка: неправильні дані користувача!");
-            return;
-        }
-
-        const user = new User(Number(id), name, email);
-        this.libraryService.addUser(user);
-        this.renderUsers();
-        this.modal.showMessage("Користувач успішно доданий!");
+            this.libraryService.addUser({name, email});
+            this.modal.showMessage("✅ Користувача успішно додано!");
+            this.renderUsers();
+        });
     }
 
     private renderBooks(): void {
@@ -75,55 +50,73 @@ class App {
         if (!booksList) return;
 
         const books = this.libraryService.getBooks();
-        const users = this.libraryService.getUsers();
 
         booksList.innerHTML = books.map((b: Book) => `
-        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-            <span>${b.title} by ${b.author} (${b.year})</span>
-            <div class="d-flex gap-2">
-                <select class="form-select form-select-sm user-select" data-book-id="${b.id}">
-                    <option value="">Виберіть користувача</option>
-                    ${users.map((u: User) => `
-                        <option value="${u.id}">${u.name}</option>
-                    `).join("")}
-                </select>
+            <div class="border-bottom py-2">
+                <strong>${b.title}</strong> — ${b.author} (${b.year})<br>
+                <em>${b.isBorrowed ? "Зайнята" : "Вільна"}</em><br>
+
+                <button data-action="remove-book" data-id="${b.id}" class="btn btn-sm btn-danger">❌ Видалити</button>
                 ${b.isBorrowed
-            ? `<button class="btn btn-warning btn-sm" data-action="return" data-id="${b.id}">Повернути</button>`
-            : `<button class="btn btn-primary btn-sm" data-action="borrow" data-id="${b.id}">Позичити</button>`
+            ? `<button data-action="return-book" data-id="${b.id}" class="btn btn-sm btn-warning">🔙 Повернути</button>`
+            : `<button data-action="borrow-book" data-id="${b.id}" class="btn btn-sm btn-success">📖 Позичити</button>`
         }
             </div>
-        </div>
-    `).join("");
+        `).join("");
 
-        // Обробка кнопок
-        booksList.querySelectorAll("button").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const bookId = Number((btn as HTMLElement).getAttribute("data-id"));
-                const action = (btn as HTMLElement).getAttribute("data-action");
-                const select = (btn.parentElement?.querySelector(".user-select")) as HTMLSelectElement;
-                const userId = Number(select.value);
+        // обробники подій
+        booksList.querySelectorAll("[data-action]").forEach(btn => {
+            const action = btn.getAttribute("data-action");
+            const id = Number(btn.getAttribute("data-id"));
 
-                if (!userId) {
-                    this.modal.showMessage("❌ Спочатку виберіть користувача!");
-                    return;
-                }
+            switch (action) {
+                case "remove-book":
+                    btn.addEventListener("click", () => {
+                        this.libraryService.removeBook(id);
+                        this.renderBooks();
+                        this.modal.showMessage("✅ Книгу успішно видалено!");
+                    });
+                    break;
 
-                if (action === "borrow") {
-                    const msg = this.libraryService.borrowBook(bookId, userId);
-                    // @ts-ignore
-                    this.modal.showMessage(msg, msg.startsWith("✅") ? "success" : "error");
-                } else {
-                    const msg = this.libraryService.returnBook(bookId, userId);
-                    // @ts-ignore
-                    this.modal.showMessage(msg, msg.startsWith("✅") ? "success" : "error");
-                }
+                case "return-book":
+                    btn.addEventListener("click", () => {
+                        const users = this.libraryService.getUsers();
+                        const user = users.find(u => u.borrowedBooks.includes(id));
+                        if (user) {
+                            this.libraryService.returnBook(id, user.id);
 
-                this.renderBooks();
-                this.renderUsers();
-            });
+                            this.renderBooks();
+                            this.renderUsers();
+                            this.modal.showMessage("✅ Книгу успішно повернено!" + (user ? ` Користувач: ${user.name}` : ""));
+                        }
+                    });
+                    break;
+
+                case "borrow-book":
+                    btn.addEventListener("click", () => {
+                        this.modal.showBorrowForm((userId: number) => {
+                            const message = this.libraryService.borrowBook(id, userId);
+                            this.modal.showMessage(message);
+                            this.renderBooks();
+                            this.renderUsers();
+                        });
+                    });
+                    break;
+
+            }
         });
     }
 
+    private removeUser(userId: number): void {
+        if (this.libraryService.getUsers().find(u => u.id === userId)?.borrowedBooks.length) {
+            this.modal.showMessage("❌ Користувача не можна видалити, поки він має позичені книги!");
+            return;
+        }
+
+        this.libraryService.removeUser(userId);
+        this.renderUsers();
+        this.modal.showMessage("✅ Користувача успішно видалено!");
+    }
 
     private renderUsers(): void {
         const usersList = document.getElementById("usersList");
@@ -133,38 +126,36 @@ class App {
 
         usersList.innerHTML = users.map((u: User) => `
         <div class="border-bottom py-2">
-            <strong>${u.name}</strong> (${u.email})<br>
+            <strong>${u.id} ${u.name}</strong> (${u.email})<br>
             Позичені книги: ${u.borrowedBooks.length ? u.borrowedBooks.join(", ") : "немає"}
+            <br>
+            <button data-action="remove-user" data-id="${u.id}" class="btn btn-sm btn-danger">❌ Видалити</button>
         </div>
     `).join("");
-    }
 
-
-    private borrowBook(bookId: number): void {
-        this.modal.confirm("Введіть ID користувача для позичення книги:", () => {
-            const userId = prompt("Введіть ID користувача"); // потім можна замінити на input в модалці
-            if (userId) {
-                const success = this.libraryService.borrowBook(bookId, Number(userId));
-                if (success) {
-                    this.renderBooks();
-                    this.renderUsers();
-                    this.modal.showMessage(`Книга #${bookId} успішно позичена користувачем #${userId}.`);
-                } else {
-                    this.modal.showMessage("Помилка: не вдалося позичити книгу.");
-                }
-            }
+        // слухачі кнопок видалення
+        usersList.querySelectorAll("[data-action='remove-user']").forEach(btn => {
+            const id = Number(btn.getAttribute("data-id"));
+            btn.addEventListener("click", () => this.removeUser(id));
         });
     }
 
-    private returnBook(bookId: number, userId: number): void {
-        const message = this.libraryService.returnBook(bookId, userId);
-        this.renderBooks();
-        this.renderUsers();
-        this.modal.showMessage(message);
+
+    private populateYears(): void {
+        const yearSelect = document.getElementById("bookYear") as HTMLSelectElement;
+        if (!yearSelect) return;
+
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year >= 1900; year--) {
+            const option = document.createElement("option");
+            option.value = year.toString();
+            option.textContent = year.toString();
+            yearSelect.appendChild(option);
+        }
     }
 
 }
-
 document.addEventListener("DOMContentLoaded", () => {
     new App();
 });
+

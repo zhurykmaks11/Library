@@ -1,52 +1,46 @@
+
 export class Modal {
-    private modalElement: HTMLElement | null;
-    private bodyElement: HTMLElement | null;
-    private footerElement: HTMLElement | null;
-    private bsModal: any;
+    private modal: any;
+    private body: HTMLElement | null;
+    private footer: HTMLElement | null;
 
-    constructor(modalId: string) {
-        this.modalElement = document.getElementById(modalId);
-        this.bodyElement = this.modalElement?.querySelector("#modal-body") || null;
-        this.footerElement = this.modalElement?.querySelector("#modal-footer") || null;
-
-        // ініціалізація Bootstrap Modal
-        if ((window as any).bootstrap && this.modalElement) {
-            this.bsModal = new (window as any).bootstrap.Modal(this.modalElement);
-        }
+    constructor() {
+        const modalElement = document.getElementById("mainModal");
+        this.modal = modalElement ? new (window as any).bootstrap.Modal(modalElement) : null;
+        this.body = document.getElementById("modal-body");
+        this.footer = document.getElementById("modal-footer");
     }
 
-    open(): void {
-        this.bsModal?.show();
+    showMessage(message: string, buttonText: string = "Закрити"): void {
+        if (!this.body || !this.footer) return;
+        this.body.innerHTML = `<p>${message}</p>`;
+        this.footer.innerHTML = `
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">${buttonText}</button>
+        `;
+        this.modal?.show();
     }
 
-    close(): void {
-        this.bsModal?.hide();
-    }
+    showBorrowForm(onSave: (userId: number) => void): void {
+        if (!this.body || !this.footer) return;
 
-    showMessage(message: string): void {
-        if (this.bodyElement && this.footerElement) {
-            this.bodyElement.innerHTML = `<p>${message}</p>`;
-            this.footerElement.innerHTML = `
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Зрозуміло</button>
-            `;
-            this.open();
-        }
-    }
+        this.body.innerHTML = `
+            <label for="borrowUserId" class="form-label">Введіть ID користувача:</label>
+            <input type="number" id="borrowUserId" class="form-control" placeholder="ID">
+        `;
 
-    confirm(message: string, onConfirm: () => void): void {
-        if (this.bodyElement && this.footerElement) {
-            this.bodyElement.innerHTML = `<p>${message}</p>`;
-            this.footerElement.innerHTML = `
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
-                <button type="button" class="btn btn-primary" id="confirmBtn">Підтвердити</button>
-            `;
-            this.open();
+        this.footer.innerHTML = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+            <button type="button" class="btn btn-primary" id="saveBorrowBtn">Зберегти</button>
+        `;
 
-            const confirmBtn = document.getElementById("confirmBtn");
-            confirmBtn?.addEventListener("click", () => {
-                onConfirm();
-                this.close();
-            });
-        }
+        this.modal?.show();
+
+        document.getElementById("saveBorrowBtn")?.addEventListener("click", () => {
+            const input = (document.getElementById("borrowUserId") as HTMLInputElement).value;
+            const userId = Number(input);
+            if (!userId) return;
+            this.modal?.hide();
+            onSave(userId);
+        });
     }
 }

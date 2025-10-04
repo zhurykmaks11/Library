@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "es6",
+    "target": "ES2022",
+    "module": "ES2020",
     "removeComments": true,
     "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist",
-    "sourceMap": true
+    "rootDir": "./src",
+    "sourceMap": true,
+    "moduleResolution": "node"
   },
   "include": [
     "src"
