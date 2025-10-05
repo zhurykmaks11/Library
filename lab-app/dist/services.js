@@ -28,8 +28,16 @@ export class LibraryService {
         return "✅ Книга успішно додана!";
     }
     removeBook(bookId) {
+        const book = this.savedBooks.find(b => b.id === bookId);
+        if (!book) {
+            return "❌ Книга не знайдена!";
+        }
+        if (book.isBorrowed) {
+            return "❌ Неможливо видалити книгу, поки вона позичена користувачем!";
+        }
         this.savedBooks = this.savedBooks.filter(b => b.id !== bookId);
         this.save();
+        return "✅ Книга успішно видалена!";
     }
     searchBooks(query) {
         return this.savedBooks.filter(b => b.title.toLowerCase().includes(query.toLowerCase()) ||
