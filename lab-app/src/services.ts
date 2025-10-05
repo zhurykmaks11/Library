@@ -1,11 +1,11 @@
 import { Book, User } from './models.js';
+import { Modal } from './modal.js';
 const BOOKS_KEY = "books";
 const USERS_KEY = "users";
 
 export class LibraryService {
     private savedBooks: Book[] = [];
     private savedUsers: User[] = [];
-
     constructor() {
         this.load();
     }
@@ -44,10 +44,22 @@ export class LibraryService {
     }
 
 
-    removeBook(bookId: number): void {
+    removeBook(bookId: number): string {
+        const book = this.savedBooks.find(b => b.id === bookId);
+
+        if (!book) {
+            return "❌ Книга не знайдена!";
+        }
+
+        if (book.isBorrowed) {
+            return "❌ Неможливо видалити книгу, поки вона позичена користувачем!";
+        }
+
         this.savedBooks = this.savedBooks.filter(b => b.id !== bookId);
         this.save();
+        return "✅ Книга успішно видалена!";
     }
+
 
     searchBooks(query: string): Book[] {
         return this.savedBooks.filter(

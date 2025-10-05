@@ -40,7 +40,7 @@ class App {
         const books = this.libraryService.getBooks();
         booksList.innerHTML = books.map((b) => `
             <div class="border-bottom py-2">
-                <strong>${b.title}</strong> — ${b.author} (${b.year})<br>
+                <strong>${b.id}) (${b.title})</strong> — ${b.author} (${b.year})<br>
                 <em>${b.isBorrowed ? "Зайнята" : "Вільна"}</em><br>
 
                 <button data-action="remove-book" data-id="${b.id}" class="btn btn-sm btn-danger">❌ Видалити</button>
@@ -55,9 +55,10 @@ class App {
             switch (action) {
                 case "remove-book":
                     btn.addEventListener("click", () => {
-                        this.libraryService.removeBook(id);
+                        const message = this.libraryService.removeBook(id);
+                        this.modal.showMessage(message);
                         this.renderBooks();
-                        this.modal.showMessage("✅ Книгу успішно видалено!");
+                        this.renderUsers();
                     });
                     break;
                 case "return-book":
@@ -102,7 +103,8 @@ class App {
         usersList.innerHTML = users.map((u) => `
         <div class="border-bottom py-2">
             <strong>${u.id} ${u.name}</strong> (${u.email})<br>
-            Позичені книги: ${u.borrowedBooks.length ? u.borrowedBooks.join(", ") : "немає"}
+            Позичені книги: ${u.borrowedBooks.length ? u.borrowedBooks.join(", ") : "немає"}<br>
+            {$
             <br>
             <button data-action="remove-user" data-id="${u.id}" class="btn btn-sm btn-danger">❌ Видалити</button>
         </div>
